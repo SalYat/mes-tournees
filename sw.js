@@ -1,6 +1,6 @@
 // Garde l'interface disponible même avec un réseau faible.
 // Les données (Supabase) ne sont jamais mises en cache ici.
-const CACHE = "mes-tournees-v3";
+const CACHE = "mes-tournees-v4";
 const SHELL = ["./", "index.html", "style.css", "app.js", "config.js", "manifest.webmanifest", "icon.svg", "icon-192.png"];
 
 self.addEventListener("install", e => {
@@ -14,7 +14,7 @@ self.addEventListener("fetch", e => {
   if (e.request.method !== "GET" || url.origin !== location.origin) return;
   // Réseau d'abord (pour recevoir les mises à jour), cache en secours.
   e.respondWith(
-    fetch(e.request).then(r => { const copy = r.clone(); caches.open(CACHE).then(c => c.put(e.request, copy)); return r; })
+    fetch(e.request.url, { cache: "no-cache" }).then(r => { const copy = r.clone(); caches.open(CACHE).then(c => c.put(e.request, copy)); return r; })
       .catch(() => caches.match(e.request).then(r => r || caches.match("index.html")))
   );
 });

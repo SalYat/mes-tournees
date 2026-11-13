@@ -111,6 +111,7 @@ function authErr(e){const m=(e&&e.message)||"";
   if(/rate limit|security purposes/i.test(m))return"Trop de tentatives : patientez une minute puis réessayez.";
   return"Opération impossible : "+m;}
 
+const acctBtns=()=>`<div class="row" style="justify-content:center"><button type="button" class="btn ghost sm" data-act="auth" data-v="newpwd">Changer mon mot de passe</button><button type="button" class="btn ghost sm" data-act="logout">Se déconnecter</button></div>`;
 function loadingOrError(){
   if(S.err)return`<div class="empty">${esc(S.err)}</div>`;
   if(!S.loaded)return'<div class="empty">Chargement des tournées…</div>';
@@ -122,9 +123,9 @@ function viewDriver(){
   const w=loadingOrError();if(w)return`<div class="driver">${w}</div>`;
   const me=S.chauffeurs.find(c=>c.id===S.meId);
   if(!me){
-    if(!S.chauffeurs.length)return`<div class="driver stack"><div class="hello"><h1>Bonjour</h1></div><div class="empty">Aucun chauffeur enregistré. Le responsable doit d'abord vous ajouter dans l'espace Responsable.</div></div>`;
+    if(!S.chauffeurs.length)return`<div class="driver stack"><div class="hello"><h1>Bonjour</h1></div><div class="empty">Aucun chauffeur enregistré. Le responsable doit d'abord vous ajouter dans l'espace Responsable.</div>${acctBtns()}</div>`;
     return`<div class="driver stack"><div class="hello"><h1>Bonjour, qui êtes-vous ?</h1><p class="muted">Touchez votre nom pour voir vos tournées.</p></div>
-      <div class="who">${S.chauffeurs.map(c=>`<button type="button" data-act="me" data-id="${c.id}"><span class="avatar">${esc(initials(c.nom))}</span><span>${esc(c.nom)}</span></button>`).join("")}</div></div>`;
+      <div class="who">${S.chauffeurs.map(c=>`<button type="button" data-act="me" data-id="${c.id}"><span class="avatar">${esc(initials(c.nom))}</span><span>${esc(c.nom)}</span></button>`).join("")}</div>${acctBtns()}</div>`;
   }
   const t=S.openTour&&tour(S.openTour);
   if(t)return viewDriverTour(t,me);
