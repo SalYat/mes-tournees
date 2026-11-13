@@ -1,6 +1,6 @@
 // Garde l'interface disponible même avec un réseau faible.
 // Les données (Supabase) ne sont jamais mises en cache ici.
-const CACHE = "mes-tournees-v2";
+const CACHE = "mes-tournees-v3";
 const SHELL = ["./", "index.html", "style.css", "app.js", "config.js", "manifest.webmanifest", "icon.svg", "icon-192.png"];
 
 self.addEventListener("install", e => {

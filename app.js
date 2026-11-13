@@ -69,7 +69,7 @@ function render(){
   $("#m-re").setAttribute("aria-pressed",S.mode==="responsable");
   $("#modes").hidden=!S.session;
   const snap=snapshotForm();
-  $("#app").innerHTML=!S.sb?viewSetup():!S.session?viewLogin():S.mode==="chauffeur"?viewDriver():viewManager();
+  $("#app").innerHTML=!S.sb?viewSetup():!S.session?viewLogin():S.auth==="newpwd"?viewNewPwd():S.mode==="chauffeur"?viewDriver():viewManager();
   $("#sheet").innerHTML=S.sheet&&S.session?viewSheet():"";
   restoreForm(snap);
 }
@@ -78,13 +78,38 @@ function viewSetup(){
   return`<div class="login card"><h1>Configuration requise</h1><p>L'application n'est pas encore reliée à sa base de données.</p>
     <p class="muted">Renseignez l'adresse et la clé de votre projet Supabase dans le fichier <b>config.js</b>, puis rechargez la page. Les étapes sont détaillées dans le fichier README du projet.</p></div>`;
 }
+/* écrans de connexion : login | signup | forgot | sent */
 function viewLogin(){
-  if(S.loginSent)return`<div class="login card"><h1>Vérifiez vos e-mails</h1><p>Nous avons envoyé un lien de connexion à <b>${esc(S.loginSent)}</b>. Ouvrez-le sur cet appareil pour entrer dans l'application.</p>
-    <button type="button" class="btn ghost" data-act="relogin">Utiliser une autre adresse</button></div>`;
-  return`<form class="login card" data-form="login"><h1>Connexion</h1><p class="muted" style="margin:0">Entrez votre adresse e-mail, vous recevrez un lien pour vous connecter. Pas de mot de passe à retenir.</p>
-    <div class="field"><label for="lg-mail">Adresse e-mail</label><input type="text" inputmode="email" autocomplete="email" id="lg-mail" placeholder="prenom.nom@entreprise.fr" required></div>
-    <button class="btn primary big">Recevoir le lien</button></form>`;
+  const m=S.auth||"login";
+  if(m==="sent")return`<div class="login card"><h1>Vérifiez vos e-mails</h1><p>${esc(S.loginSent)}</p>
+    <button type="button" class="btn primary" data-act="auth" data-v="login">Retour à la connexion</button></div>`;
+  const mail=`<div class="field"><label for="lg-mail">Adresse e-mail</label><input type="email" autocomplete="username" id="lg-mail" placeholder="prenom.nom@entreprise.fr" required></div>`;
+  const pwd=(id,label,ac)=>`<div class="field"><label for="${id}">${label}</label><input type="password" autocomplete="${ac}" id="${id}" minlength="6" required></div>`;
+  if(m==="forgot")return`<form class="login card" data-form="forgot"><h1>Mot de passe oublié</h1>
+    <p class="muted" style="margin:0">Entrez votre adresse e-mail : vous recevrez un lien pour choisir un nouveau mot de passe.</p>${mail}
+    <button class="btn primary big">Envoyer le lien</button><button type="button" class="btn ghost" data-act="auth" data-v="login">Retour à la connexion</button></form>`;
+  if(m==="signup")return`<form class="login card" data-form="signup"><h1>Créer un compte</h1>${mail}
+    ${pwd("lg-pwd","Mot de passe (6 caractères minimum)","new-password")}${pwd("lg-pwd2","Confirmez le mot de passe","new-password")}
+    <button class="btn primary big">Créer mon compte</button><button type="button" class="btn ghost" data-act="auth" data-v="login">J'ai déjà un compte</button></form>`;
+  return`<form class="login card" data-form="login"><h1>Connexion</h1>${mail}${pwd("lg-pwd","Mot de passe","current-password")}
+    <button class="btn primary big">Se connecter</button>
+    <div class="row" style="justify-content:space-between"><button type="button" class="btn ghost sm" data-act="auth" data-v="forgot">Mot de passe oublié ?</button><button type="button" class="btn ghost sm" data-act="auth" data-v="signup">Créer un compte</button></div></form>`;
 }
+function viewNewPwd(){
+  return`<form class="login card" data-form="newpwd"><h1>Choisir un mot de passe</h1>
+    <p class="muted" style="margin:0">Il servira à vous connecter avec votre adresse e-mail, sans lien à ouvrir.</p>
+    <div class="field"><label for="np-1">Nouveau mot de passe (6 caractères minimum)</label><input type="password" autocomplete="new-password" id="np-1" minlength="6" required></div>
+    <div class="field"><label for="np-2">Confirmez le mot de passe</label><input type="password" autocomplete="new-password" id="np-2" minlength="6" required></div>
+    <button class="btn primary big">Enregistrer</button>${S.recovery?"":`<button type="button" class="btn ghost" data-act="auth" data-v="">Annuler</button>`}</form>`;
+}
+function authErr(e){const m=(e&&e.message)||"";
+  if(/invalid login/i.test(m))return"E-mail ou mot de passe incorrect.";
+  if(/not confirmed/i.test(m))return"Adresse pas encore confirmée : ouvrez le lien reçu par e-mail à l'inscription.";
+  if(/already registered|already exists/i.test(m))return"Un compte existe déjà avec cette adresse : connectez-vous.";
+  if(/at least|password should/i.test(m))return"Mot de passe trop court : 6 caractères minimum.";
+  if(/same.*password|different from the old/i.test(m))return"Choisissez un mot de passe différent de l'ancien.";
+  if(/rate limit|security purposes/i.test(m))return"Trop de tentatives : patientez une minute puis réessayez.";
+  return"Opération impossible : "+m;}
 
 function loadingOrError(){
   if(S.err)return`<div class="empty">${esc(S.err)}</div>`;
@@ -114,7 +139,7 @@ function viewDriver(){
     <div class="row" style="justify-content:space-between"><div class="hello"><h1>Bonjour ${esc(me.nom.split(" ")[0])}</h1></div><button type="button" class="btn ghost sm" data-act="me" data-id="">Changer</button></div>
     ${mine.length?mine.map(card).join(""):'<div class="empty">Pas de tournée prévue pour vous. Revenez plus tard ou appelez votre responsable.</div>'}
     ${past.length?`<details><summary>Tournées précédentes</summary><div class="stack" style="margin-top:10px">${past.map(card).join("")}</div></details>`:""}
-    <button type="button" class="btn ghost sm" data-act="logout" style="align-self:center">Se déconnecter</button>
+    <div class="row" style="justify-content:center"><button type="button" class="btn ghost sm" data-act="auth" data-v="newpwd">Changer mon mot de passe</button><button type="button" class="btn ghost sm" data-act="logout">Se déconnecter</button></div>
   </div>`;
 }
 
@@ -188,7 +213,7 @@ function viewManager(){
           <div class="h"><b>${esc(t.nom)}</b><span class="pill s-${st}">${ST_T[st]}</span></div>
           <div class="row muted num" style="font-size:14px;gap:6px"><span>${esc(chName(t.chauffeurId))}</span>·<span>${esc(fmtDate(t.date))}</span>·<span>${cc.ok+cc.ko}/${cc.tot}</span>${cc.ko?`·<span style="color:var(--ko);font-weight:700">${cc.ko} pb</span>`:""}</div>${bar(t.arrets)}</button>`}).join(""):`<div class="empty">${S.scope==="jour"?"Aucune tournée aujourd'hui. Créez-en une avec « Nouvelle tournée ».":"Rien sur cette période."}</div>`}</div>
         ${S.scope==="passe"&&list.length?`<button type="button" class="btn" data-act="export">Exporter l'historique (CSV)</button>`:""}
-        <button type="button" class="btn ghost sm" data-act="logout" style="align-self:flex-start">Se déconnecter</button>
+        <div class="row"><button type="button" class="btn ghost sm" data-act="auth" data-v="newpwd">Changer mon mot de passe</button><button type="button" class="btn ghost sm" data-act="logout">Se déconnecter</button></div>
       </aside>
       <section class="detail">${S.selId==="__ch"?viewDrivers():sel?viewTourDetail(sel):'<div class="empty">Sélectionnez une tournée pour voir ses arrêts et suivre son avancement.</div>'}</section>
     </div>`;
@@ -248,7 +273,7 @@ document.addEventListener("click",async e=>{
     case"me":S.meId=id||null;ls.set("mt_me",id||null);S.openTour=null;break;
     case"open":S.openTour=id;window.scrollTo(0,0);break;
     case"close":S.openTour=null;break;
-    case"relogin":S.loginSent=false;break;
+    case"auth":S.auth=v||null;break;
     case"logout":await S.sb.auth.signOut();return;
     case"start":{const tt=tour(id);if(tt){tt.debutLe=new Date().toISOString();tt.statut="en_cours";render();writeTour(id,{debutLe:tt.debutLe,statut:"en_cours"})}return}
     case"sh-livre":S.sheet={type:"livre",stopId:id};break;
@@ -294,9 +319,25 @@ document.addEventListener("change",e=>{
 document.addEventListener("submit",async e=>{
   const f=e.target.closest("form[data-form]");if(!f)return;e.preventDefault();
   const kind=f.dataset.form;
-  if(kind==="login"){const mail=$("#lg-mail").value.trim();if(!/^\S+@\S+\.\S+$/.test(mail)){toast("Adresse e-mail invalide.");return}
-    const {error}=await S.sb.auth.signInWithOtp({email:mail,options:{emailRedirectTo:location.origin+location.pathname}});
-    if(error){toast("Envoi impossible : "+error.message);return}S.loginSent=mail;render();return}
+  const back=location.origin+location.pathname;
+  if(kind==="login"||kind==="signup"||kind==="forgot"){
+    const mail=$("#lg-mail").value.trim().toLowerCase();if(!/^\S+@\S+\.\S+$/.test(mail)){toast("Adresse e-mail invalide.");return}
+    const btn=f.querySelector("button.primary");btn.disabled=true;
+    try{
+      if(kind==="login"){const {error}=await S.sb.auth.signInWithPassword({email:mail,password:$("#lg-pwd").value});if(error)throw error;S.auth=null;}
+      else if(kind==="signup"){const p=$("#lg-pwd").value;if(p!==$("#lg-pwd2").value){toast("Les deux mots de passe ne sont pas identiques.");return}
+        const {data,error}=await S.sb.auth.signUp({email:mail,password:p,options:{emailRedirectTo:back}});if(error)throw error;
+        if(data&&data.user&&Array.isArray(data.user.identities)&&!data.user.identities.length){toast("Un compte existe déjà avec cette adresse : connectez-vous.");S.auth="login";render();return}
+        if(!data.session){S.auth="sent";S.loginSent="Un e-mail de confirmation a été envoyé à "+mail+". Ouvrez le lien une seule fois, ensuite vous vous connecterez avec votre mot de passe.";}
+        else S.auth=null;}
+      else{const {error}=await S.sb.auth.resetPasswordForEmail(mail,{redirectTo:back});if(error)throw error;
+        S.auth="sent";S.loginSent="Si un compte existe pour "+mail+", un lien pour choisir un nouveau mot de passe vient d'être envoyé.";}
+      render();
+    }catch(err){toast(authErr(err))}finally{if(btn.isConnected)btn.disabled=false}
+    return}
+  if(kind==="newpwd"){const p=$("#np-1").value;if(p!==$("#np-2").value){toast("Les deux mots de passe ne sont pas identiques.");return}
+    const {error}=await S.sb.auth.updateUser({password:p});if(error){toast(authErr(error));return}
+    S.auth=null;S.recovery=false;toast("Mot de passe enregistré");render();return}
   if(kind==="add-ch"){const nom=$("#ch-nom").value.trim();if(!nom)return;const tel=$("#ch-tel").value.trim();
     const {error}=await S.sb.from("chauffeurs").insert({id:uuid(),nom,tel});
     if(error){toast(errMsg(error));return}$("#ch-nom").value="";$("#ch-tel").value="";toast(nom+" ajouté");loadAll();return}
@@ -357,7 +398,10 @@ document.addEventListener("visibilitychange",()=>{if(!document.hidden&&S.session
 /* ---------- démarrage ---------- */
 if(CFG.supabaseUrl&&CFG.supabaseAnonKey&&window.supabase){
   S.sb=window.supabase.createClient(CFG.supabaseUrl,CFG.supabaseAnonKey);
-  S.sb.auth.onAuthStateChange((_ev,session)=>{S.session=session;if(session){S.loginSent=false;startData()}else stopData();render()});
+  S.sb.auth.onAuthStateChange((ev,session)=>{S.session=session;
+    if(ev==="PASSWORD_RECOVERY"){S.auth="newpwd";S.recovery=true}
+    if(session){startData()}else{stopData();if(S.auth==="newpwd")S.auth=null}
+    render()});
   S.sb.auth.getSession().then(({data})=>{S.session=data.session;if(S.session)startData();render()});
 }
 render();

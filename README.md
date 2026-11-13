@@ -33,7 +33,7 @@ window.MT_CONFIG = {
 - **iPhone (Safari)** : ouvrir le lien, bouton Partager > **Sur l'écran d'accueil**.
 
 ## Connexion
-Chaque utilisateur entre son adresse e-mail et reçoit un lien de connexion (pas de mot de passe). Pour réserver l'accès à vos équipes : Supabase > **Authentication > Sign In / Providers > Email**, désactiver **Allow new users to sign up** après avoir invité vos utilisateurs (**Authentication > Users > Invite user**).
+Chaque utilisateur se connecte avec son adresse e-mail et un mot de passe. À la création du compte, un e-mail de confirmation est envoyé une seule fois. « Mot de passe oublié ? » envoie un lien pour en choisir un nouveau. Pour réserver l'accès à vos équipes : Supabase > **Authentication > Sign In / Providers > Email**, désactiver **Allow new users to sign up** après avoir invité vos utilisateurs (**Authentication > Users > Invite user**).
 
 ## Limites de la version 1
 - Tous les utilisateurs connectés ont les mêmes droits (pas encore de rôle « chauffeur » restreint).
